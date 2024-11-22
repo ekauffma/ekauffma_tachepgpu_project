@@ -11,7 +11,7 @@
 #include <ostream>
 
 const int DSIZE = 512;
-const int RADIUS = 2;
+const int RADIUS = 3;
 
 int stencil_2d(int in[DSIZE][DSIZE], int out[DSIZE][DSIZE]) {
     for (int i = 0; i < DSIZE; i++) {
@@ -78,7 +78,7 @@ int mat_mul(int A[DSIZE][DSIZE], int B[DSIZE][DSIZE], int C[DSIZE][DSIZE]) {
     return 0;
 }
 
-int printMatrix(int A[DSIZE][DSIZE], int limit = 6) {
+int printMatrix(int A[DSIZE][DSIZE], int limit = 8) {
     std::cout<<"-              -\n";
     for (int i = 0; i < limit; i++) {
         std::cout<<"| ";
@@ -116,7 +116,7 @@ int main() {
     stencil_errorcheck(h_B, h_B_stencilled);
     mat_mul(h_A_stencilled, h_B_stencilled, h_C);
     
-    std::cout<<"Printing 6x6 top left corner of each matrix:\n";
+    std::cout<<"Printing 8x8 top left corner of each matrix:\n";
     std::cout<<"h_A = \n";
     printMatrix(h_A);
     std::cout<<"h_B= \n";
