@@ -67,6 +67,32 @@ h_C =
 -                                               -
 ```
 
+I then compiled with optimizations enabled and debug symbols included: `g++ stencil_matmul.cc -O2 -g -o stencil_matmul_cpp_debug`.
+After running the collect program using the following command: `vtune -collect hotspots -result-dir vtune_results ./stencil_matmul_cpp_debug`,
+I examined the results using `vtune -report hotspots -result-dir vtune_results` and got the following output with my matrix size set to 1024 and radius set to 3:
+```
+vtune: Using result path `/afs/cern.ch/user/e/ekauffma/ekauffma_tachepgpu_project/vtune_results'
+vtune: Executing actions 75 % Generating a report                              Function    CPU Time  CPU Time:Effective Time  CPU Time:Spin Time  CPU Time:Overhead Time  Module                    Function (Full)                                       Source File        Start Address
+----------  --------  -----------------------  ------------------  ----------------------  ------------------------  ----------------------------------------------------  -----------------  -------------
+mat_mul       4.850s                   4.850s                  0s                      0s  stencil_matmul_cpp_debug  mat_mul(int (*)[1024], int (*)[1024], int (*)[1024])  stencil_matmul.cc  0x4016e0
+rand          0.010s                   0.010s                  0s                      0s  libc.so.6                 rand                                                  [Unknown]          0x41ed0
+stencil_2d    0.010s                   0.010s                  0s                      0s  stencil_matmul_cpp_debug  stencil_2d(int (*)[1024], int (*)[1024])              stencil_matmul.cc  0x401520
+vtune: Executing actions 100 % done
+```
+
+I ran for a variety of matrix sizes:
+
+| Matrix Size | stencil_2d time | stencil_2d percentage | mat_mul time | mat_mul percentage |
+|-------------|-----------------|-----------------------|--------------|--------------------|
+| 256         | 0.010s          | 100.0%                | -            | -                  |
+| 512         | 0.210s          | 100.0%                | -            | -                  |
+| 1024        | 4.810s          | 99.6%                 | 0.010s       | 0.2%               |
+| 2048        | 44.310s         | 99.8%                 | 0.030s       | 0.1%               |
+| 4096        | 395.678s        | 99.9%                 | 0.070s       | 0.0%               |
+
+It looks like the stencil operation is negligible in comparison to matrix multiplication. So we need to focus on speeding up matrix multiplication when optimizing in CUDA.
+
+
 ## Porting to CUDA
 
 ## Optimizing performance in CUDA
