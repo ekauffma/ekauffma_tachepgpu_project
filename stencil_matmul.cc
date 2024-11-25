@@ -10,7 +10,7 @@
 #include <iostream>
 #include <ostream>
 
-const int DSIZE = 512;
+const int DSIZE = 1024;
 const int RADIUS = 3;
 
 int stencil_2d(int in[DSIZE][DSIZE], int out[DSIZE][DSIZE]) {
@@ -94,12 +94,22 @@ int printMatrix(int A[DSIZE][DSIZE], int limit = 8) {
 
 int main() {
 
+    std::cout<<"Start of program\n";
+    int (*h_A)[DSIZE] = new int[DSIZE][DSIZE];
+    int (*h_B)[DSIZE] = new int[DSIZE][DSIZE];
+    int (*h_A_stencilled)[DSIZE] = new int[DSIZE][DSIZE];
+    int (*h_B_stencilled)[DSIZE] = new int[DSIZE][DSIZE];
+    int (*h_C)[DSIZE] = new int[DSIZE][DSIZE];    
+    /*
     int h_A[DSIZE][DSIZE] = {};
     int h_B[DSIZE][DSIZE] = {};
     int h_A_stencilled[DSIZE][DSIZE] = {};
     int h_B_stencilled[DSIZE][DSIZE] = {};
     int h_C[DSIZE][DSIZE] = {};
+    */
+    std::cout<<"Initialized matrices\n";
 
+    srand(time(nullptr));
     for (int i = 0; i < DSIZE; i++) {
         for (int j = 0; j < DSIZE; j++) {
             h_A[i][j] = rand()%2;
@@ -109,12 +119,18 @@ int main() {
             h_C[i][j] = 0;
         }
     }
+    std::cout<<"Initialized matrix values\n";
 
     stencil_2d(h_A, h_A_stencilled);
+    std::cout<<"Performed stencil on matrix A\n";
     stencil_2d(h_B, h_B_stencilled);
+    std::cout<<"Performed stencil on matrix B\n";
     stencil_errorcheck(h_A, h_A_stencilled);
+    std::cout<<"Performed error check on matrix A\n";
     stencil_errorcheck(h_B, h_B_stencilled);
+    std::cout<<"Performed error check on matrix B\n";
     mat_mul(h_A_stencilled, h_B_stencilled, h_C);
+    std::cout<<"Finished multiplying matries and storing results in C\n";
     
     std::cout<<"Printing 8x8 top left corner of each matrix:\n";
     std::cout<<"h_A = \n";
@@ -127,4 +143,11 @@ int main() {
     printMatrix(h_B_stencilled);
     std::cout<<"h_C = \n";
     printMatrix(h_C);
+
+    // Cleanup
+    delete[] h_A;
+    delete[] h_B;
+    delete[] h_A_stencilled;
+    delete[] h_B_stencilled;
+    delete[] h_C;
 }
