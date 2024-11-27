@@ -10,8 +10,8 @@
 #include <iostream>
 #include <ostream>
 
-const int DSIZE = 4;
-const int RADIUS = 1;
+const int DSIZE = 512;
+const int RADIUS = 3;
 
 int stencil_2d(int in[DSIZE][DSIZE], int out[DSIZE][DSIZE]) {
     for (int i = 0; i < DSIZE; i++) {
@@ -139,15 +139,15 @@ int main() {
     
     std::cout<<"Printing 8x8 top left corner of each matrix:\n";
     std::cout<<"h_A = \n";
-    printMatrix(h_A, 4);
+    printMatrix(h_A, 8);
     std::cout<<"h_B= \n";
-    printMatrix(h_B, 4);
+    printMatrix(h_B, 8);
     std::cout<<"h_A_stencilled = \n";
-    printMatrix(h_A_stencilled, 4);
+    printMatrix(h_A_stencilled, 8);
     std::cout<<"h_B_stencilled = \n";
-    printMatrix(h_B_stencilled, 4);
+    printMatrix(h_B_stencilled, 8);
     std::cout<<"h_C = \n";
-    printMatrix(h_C, 4);
+    printMatrix(h_C, 8);
 
     // Cleanup
     delete[] h_A;
