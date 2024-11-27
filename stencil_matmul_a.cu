@@ -37,16 +37,16 @@ __global__ void stencil_2d(int *in, int *out) {
     int column = threadIdx.x + blockIdx.x * blockDim.x;
 
     int result = in[row * DSIZE + column];
-    if ((row < RADIUS) || ((DSIZE - row) < RADIUS)) {
+    if ((row < RADIUS) || ((DSIZE - row) <= RADIUS)) {
         out[row * DSIZE + column] = result;
         return;
     }
-    else if ((column < RADIUS) || ((DSIZE - column) < RADIUS)) {
+    else if ((column < RADIUS) || ((DSIZE - column) <= RADIUS)) {
         out[row * DSIZE + column] = result;
         return;
     }
     else {
-        for (int k = -RADIUS; k < RADIUS; k++) {
+        for (int k = -RADIUS; k <= RADIUS; k++) {
             if (k==0) continue;
             result += in[(row + k)*DSIZE + column];
             result += in[row*DSIZE + (column + k)];
@@ -59,13 +59,13 @@ __global__ void stencil_2d(int *in, int *out) {
 int stencil_errorcheck(int *original, int *modified) {
     for (int i = 0; i < DSIZE; ++i) {
         for (int j = 0; j < DSIZE; ++j) {
-            if (i < RADIUS || (DSIZE-i) < RADIUS) {
+            if (i < RADIUS || (DSIZE-i) <= RADIUS) {
                 if (modified[i*DSIZE+j] != original[i*DSIZE+j]) {
                     printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i*DSIZE+j], 1);
                     return -1;
                 }
             }
-            else if (j < RADIUS || (DSIZE-j) < RADIUS) {
+            else if (j < RADIUS || (DSIZE-j) <= RADIUS) {
                 if (modified[i*DSIZE+j] != original[i*DSIZE+j]) {
                     printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i*DSIZE+j], 1);
                     return -1;
@@ -73,11 +73,11 @@ int stencil_errorcheck(int *original, int *modified) {
             }
             else {
                 int expectedValue = original[i*DSIZE+j];
-                for (int k = 1; k < RADIUS; k++) {
-                    if (i+k < DSIZE) expectedValue += original[(i+k)*DSIZE+j];
-                    if (i-k > 0) expectedValue += original[(i-k)*DSIZE+j];
-                    if (j+k < DSIZE) expectedValue += original[i*DSIZE+j+k];
-                    if (j-k > 0) expectedValue += original[i*DSIZE+j-k];
+                for (int k = 1; k <= RADIUS; k++) {
+                    if (i+k <= DSIZE) expectedValue += original[(i+k)*DSIZE+j];
+                    if (i-k >= 0) expectedValue += original[(i-k)*DSIZE+j];
+                    if (j+k <= DSIZE) expectedValue += original[i*DSIZE+j+k];
+                    if (j-k >= 0) expectedValue += original[i*DSIZE+j-k];
                 }
                 if (modified[i*DSIZE+j] != expectedValue) {
                     printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, expectedValue, 1);
