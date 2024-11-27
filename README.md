@@ -82,18 +82,50 @@ vtune: Executing actions 100 % done
 
 I ran for a variety of matrix sizes:
 
-| Matrix Size | stencil_2d time | stencil_2d percentage | mat_mul time | mat_mul percentage |
-|-------------|-----------------|-----------------------|--------------|--------------------|
-| 256         | 0.010s          | 100.0%                | -            | -                  |
-| 512         | 0.210s          | 100.0%                | -            | -                  |
-| 1024        | 4.810s          | 99.6%                 | 0.010s       | 0.2%               |
-| 2048        | 44.310s         | 99.8%                 | 0.030s       | 0.1%               |
-| 4096        | 395.678s        | 99.9%                 | 0.070s       | 0.0%               |
+| Matrix Size | mat_mul time    | mat_mul percentage | stencil_2d time | stencil_2d percentage |
+|-------------|-----------------|--------------------|-----------------|-----------------------|
+| 256         | 0.010s          | 100.0%             | -               | -                     |
+| 512         | 0.210s          | 100.0%             | -               | -                     |
+| 1024        | 4.810s          | 99.6%              | 0.010s          | 0.2%                  |
+| 2048        | 44.310s         | 99.8%              | 0.030s          | 0.1%                  |
+| 4096        | 395.678s        | 99.9%              | 0.070s          | 0.0%                  |
 
 It looks like the stencil operation is negligible in comparison to matrix multiplication. So we need to focus on speeding up matrix multiplication when optimizing in CUDA.
 
 
 ## Porting to CUDA
+
+I then wrote CUDA code without any optimization or usage of shared memory: `stencil_matmul_a.cu`.
+I compiled using `nvcc stencil_matmul_a.cu -o stencil_matmul_a`.
+For profiling, I compiled using `nvcc -o stencil_matmul_a -lineinfo stencil_matmul_a.cu`, then ran
+
+```
+nsys profile -o profile_a ./stencil_matmul_a
+nsys stats profile_a.nsys-rep
+```
+
+The timing results for the kernels are in the tables below. First, varying matrix size (keeping BLOCK_SIZE=32):
+
+| Matrix Size | mat_mul time | mat_mul percentage    | stencil_2d time | stencil_2d percentage | total compute time |
+|-------------|--------------|-----------------------|-----------------|-----------------------|--------------------|
+| 256         | 1.2256e-5s   | 64.5%                 | 6.752e-6s       | 35.5%                 | 0.334071s          |
+| 512         | 7.61067e-4s  | 95.8%                 | 3.3535e-5s      | 4.2%                  | 0.505172s          |
+| 1024        | 5.55579e-3s  | 97.9%                 | 1.1654e-4s      | 2.1%                  | 0.972020s          |
+| 2048        | 0.03482s     | 98.9%                 | 3.8457e-4s      | 1.1%                  | 0.892507s          |
+| 4096        | 0.26800s     | 99.4%                 | 1.7442e-3s      | 0.6%                  | 1.324413s          |
+
+Then varying block size (keeping DSIZE=1024):
+
+| Block Size  | mat_mul time | mat_mul percentage    | stencil_2d time | stencil_2d percentage | total compute time |
+|-------------|--------------|-----------------------|-----------------|-----------------------|--------------------|
+| 8           | 7.20828e-3   | 97.5%                 | 1.83899e-4s     | 2.5%                  | 1.063913s          |
+| 16          | 9.03191e-3   | 97.8%                 | 2.06203e-4s     | 2.2%                  | 0.491856s          |
+| 32          | 5.43969e-3s  | 96.8%                 | 1.77564e-4s     | 3.2%                  | 0.966627s          |
+
+We can see that this is way faster in CUDA than in C++. The stencil operation scales better than the matrix multiplication operation.
+Varying the block size doesn't see a huge performance increase.
+
+Before using managed memory, I will switch to using some shared memory, like we did in the Week 4 assignment.
 
 ## Optimizing performance in CUDA
 
