@@ -89,6 +89,23 @@ int stencil_errorcheck(int *original, int *modified) {
     return 0;
 }
 
+int matmul_errorcheck(int *A, int *B, int *C) {
+
+    for (int i = 0; i < DSIZE; i++) {
+        for (int j = 0; j < DSIZE; j++) {
+            int result = 0;
+            for (int k = 0; k < DSIZE; k++) {
+                result += A[i*DSIZE+k] * B[k*DSIZE+j];
+            }
+            if (C[i*DSIZE + j]!=result) {
+                printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, result, 1);
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
 int printMatrix(int *A, int limit = 8) {
     std::cout<<"-              -\n";
     for (int i = 0; i < limit; i++) {
@@ -167,6 +184,9 @@ int main() {
 
     // copy multiplication results back to host
     cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+
+    // perform error check for matrix multiplication
+    matmul_errorcheck(h_A_stencilled, h_B_stencilled, h_C);
 
     // print results
     std::cout<<"Printing 8x8 top left corner of each matrix:\n";
