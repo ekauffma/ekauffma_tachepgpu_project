@@ -10,21 +10,33 @@
 #include <iostream>
 #include <ostream>
 
-const int DSIZE = 1024;
-const int RADIUS = 3;
+const int DSIZE = 4;
+const int RADIUS = 1;
 
 int stencil_2d(int in[DSIZE][DSIZE], int out[DSIZE][DSIZE]) {
     for (int i = 0; i < DSIZE; i++) {
         for (int j = 0; j < DSIZE; j++) {
             int result = in[i][j];
             out[i][j] = result;
-            if (i < RADIUS || (DSIZE-i) < RADIUS) continue;
-            if (j < RADIUS || (DSIZE-j) < RADIUS) continue;
-            for (int k = 1; k < RADIUS; k++) {
-                if (i+k < DSIZE) result += in[i+k][j];
-                if (i-k > 0) result += in[i-k][j];
-                if (j+k < DSIZE) result += in[i][j+k];
-                if (j-k > 0) result += in[i][j-k];
+            if (i < RADIUS || (DSIZE-i) <= RADIUS) {
+                continue;
+            }
+            if (j < RADIUS || (DSIZE-j) <= RADIUS) {
+                continue;
+            }
+            for (int k = 1; k <= RADIUS; k++) {
+                if (i+k <= DSIZE) {
+                    result += in[i+k][j];
+                }
+                if (i-k >= 0) {
+                    result += in[i-k][j];
+                }
+                if (j+k <= DSIZE) {
+                    result += in[i][j+k];
+                }
+                if (j-k >= 0) {
+                    result += in[i][j-k];
+                }
             }
             out[i][j] = result;
         }
@@ -35,13 +47,13 @@ int stencil_2d(int in[DSIZE][DSIZE], int out[DSIZE][DSIZE]) {
 int stencil_errorcheck(int original[DSIZE][DSIZE], int modified[DSIZE][DSIZE]) {
     for (int i = 0; i < DSIZE; ++i) {
         for (int j = 0; j < DSIZE; ++j) {
-            if (i < RADIUS || (DSIZE-i) < RADIUS) {
+            if (i < RADIUS || (DSIZE-i) <= RADIUS) {
                 if (modified[i][j] != original[i][j]) {
                     printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i][j], 1);
                     return -1;
                 }
             }
-            else if (j < RADIUS || (DSIZE-j) < RADIUS) {
+            else if (j < RADIUS || (DSIZE-j) <= RADIUS) {
                 if (modified[i][j] != original[i][j]) {
                     printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i][j], 1);
                     return -1;
@@ -49,11 +61,11 @@ int stencil_errorcheck(int original[DSIZE][DSIZE], int modified[DSIZE][DSIZE]) {
             }
             else {
                 int expectedValue = original[i][j];
-                for (int k = 1; k < RADIUS; k++) {
-                    if (i+k < DSIZE) expectedValue += original[i+k][j];
-                    if (i-k > 0) expectedValue += original[i-k][j];
-                    if (j+k < DSIZE) expectedValue += original[i][j+k];
-                    if (j-k > 0) expectedValue += original[i][j-k];
+                for (int k = 1; k <= RADIUS; k++) {
+                    if (i+k <= DSIZE) expectedValue += original[i+k][j];
+                    if (i-k >= 0) expectedValue += original[i-k][j];
+                    if (j+k <= DSIZE) expectedValue += original[i][j+k];
+                    if (j-k >= 0) expectedValue += original[i][j-k];
                 }
                 if (modified[i][j] != expectedValue) {
                     printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, expectedValue, 1);
@@ -100,13 +112,6 @@ int main() {
     int (*h_A_stencilled)[DSIZE] = new int[DSIZE][DSIZE];
     int (*h_B_stencilled)[DSIZE] = new int[DSIZE][DSIZE];
     int (*h_C)[DSIZE] = new int[DSIZE][DSIZE];    
-    /*
-    int h_A[DSIZE][DSIZE] = {};
-    int h_B[DSIZE][DSIZE] = {};
-    int h_A_stencilled[DSIZE][DSIZE] = {};
-    int h_B_stencilled[DSIZE][DSIZE] = {};
-    int h_C[DSIZE][DSIZE] = {};
-    */
     std::cout<<"Initialized matrices\n";
 
     srand(time(nullptr));
@@ -134,15 +139,15 @@ int main() {
     
     std::cout<<"Printing 8x8 top left corner of each matrix:\n";
     std::cout<<"h_A = \n";
-    printMatrix(h_A);
+    printMatrix(h_A, 4);
     std::cout<<"h_B= \n";
-    printMatrix(h_B);
+    printMatrix(h_B, 4);
     std::cout<<"h_A_stencilled = \n";
-    printMatrix(h_A_stencilled);
+    printMatrix(h_A_stencilled, 4);
     std::cout<<"h_B_stencilled = \n";
-    printMatrix(h_B_stencilled);
+    printMatrix(h_B_stencilled, 4);
     std::cout<<"h_C = \n";
-    printMatrix(h_C);
+    printMatrix(h_C, 4);
 
     // Cleanup
     delete[] h_A;
