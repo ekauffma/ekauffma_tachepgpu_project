@@ -182,7 +182,21 @@ The total compute time sped up dramatically. Here are those results for differen
 
 At larger matrix sizes, the total compute time becomes similar to that of the explicit memory copies, but the improvement at small matrix sizes is huge.
 
-
 ## Optimizing performance in CUDA
+
+I've implemented non-default CUDA streams by creating two streams to run the stencil operations on matrix A and matrix B concurrently.
+This is done in `stencil_matmul_d.cu`. I've already implemented shared memory in the stencil operation, but for the next step I'll try with matrix multiplication, as that is the current bottleneck. Here are the total compute times for Version D:
+
+| Matrix Size | total compute time |
+|-------------|--------------------|
+| 256         | 0.029293s          |
+| 512         | 0.030861s          |
+| 1024        | 0.016853s          |
+| 2048        | 0.121651s          |
+| 4096        | 0.407939s          |
+
+Again there appears to be some performance increase for the smaller matrix data points but not much for the larger matrices, since the matrix multiplication bottleneck dominates there.
+
+
 
 ## Making use of Alpaka
