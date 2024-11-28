@@ -147,7 +147,7 @@ Varying block size:
 
 It looks like this version of the stencil operation has worse performance. This might be due to how indices need to be handled for the halo cases, considering that we also need to do the matrix operation. I will revert back to version a before implementing managed memory. Before implementing managed memory, the profiling of the memory copies for `DSIZE=1024` is shown below:
 
-| Time (%) | Total Time (ns) | Count | Avg (ns)  |  Med (ns) |  Min (ns) |  Max (ns) | StdDev (ns)   |  Operation                   |
+| Time (%) | Total Time (ns) | Count | Avg (ns)  |  Med (ns) |  Min (ns) |  Max (ns) | StdDev (ns)   | Operation                    |
 |----------|-----------------|-------|-----------|-----------|-----------|-----------|---------------|------------------------------|
 | 65.7     | 2,543,165       | 7     | 363,309.3 | 333,591.0 | 328,439   | 533,426   | 75,364.8      | [CUDA memcpy Host-to-Device] |
 | 34.3     | 1,330,429       | 3     | 443,476.3 | 444,532.0 | 431,349   | 454,548   | 11,635.5      | [CUDA memcpy Device-to-Host] |
@@ -157,11 +157,30 @@ It looks like this version of the stencil operation has worse performance. This 
 | 29.360     | 7     | 4.194    | 4.194    | 4.194    | 4.194    | 0.000       | [CUDA memcpy Host-to-Device] |
 | 12.583     | 3     | 4.194    | 4.194    | 4.194    | 4.194    | 0.000       | [CUDA memcpy Device-to-Host] |
 
-Now to implement managed memory, which is done in `stencil_matmul_c.cu`.
+Now to implement managed memory, which is done in `stencil_matmul_c.cu`. Again, for profiling, this program is compiled and ran as above.
+The kernels won't see any performance increase, so I will not recreate those timing tables, but the profiling of the memory copies is shown below:
 
+| Time (%) | Total Time (ns) | Count | Avg (ns)  | Med (ns) | Min (ns) | Max (ns) | StdDev (ns) | Operation                            |
+|----------|-----------------|-------|-----------|----------|----------|----------|-------------|--------------------------------------|
+| 53.8     | 2,146,181       | 236   | 9,094.0   | 3,263.0  | 2,430    |  81,119  | 15,705.0    | [CUDA memcpy Unified Host-to-Device] |
+| 46.2     | 1,843,521       | 120   | 15,362.7  | 4,176.0  | 1,919    |  91,871  | 24,108.0    | [CUDA memcpy Unified Device-to-Host] |
+ 
+| Total (MB) | Count | Avg (MB) | Med (MB) | Min (MB) | Max (MB) | StdDev (MB) | Operation                             |
+|------------|-------|----------|----------|----------|----------|-------------|---------------------------------------|
+| 20.972     | 120   | 0.175    | 0.033    | 0.004    | 1.044    | 0.302       | [CUDA memcpy Unified Device-to-Host]  |
+| 20.972     | 236   | 0.089    | 0.012    | 0.004    | 1.036    | 0.207       | [CUDA memcpy Unified Host-to-Device]  |
 
+The total compute time sped up dramatically. Here are those results for different matrix sizes:
 
+| Matrix Size | total compute time |
+|-------------|--------------------|
+| 256         | 0.040985s          |
+| 512         | 0.036200s          |
+| 1024        | 0.020276s          |
+| 2048        | 0.128740s          |
+| 4096        | 0.418634s          |
 
+At larger matrix sizes, the total compute time becomes similar to that of the explicit memory copies, but the improvement at small matrix sizes is huge.
 
 
 ## Optimizing performance in CUDA
