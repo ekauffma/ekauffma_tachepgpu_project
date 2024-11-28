@@ -127,13 +127,13 @@ int stencil_errorcheck(int *original, int *modified) {
         for (int j = 0; j < DSIZE; ++j) {
             if (i < RADIUS || (DSIZE-i) <= RADIUS) {
                 if (modified[i*DSIZE+j] != original[i*DSIZE+j]) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i*DSIZE+j], 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], original[i*DSIZE+j]);
                     return -1;
                 }
             }
             else if (j < RADIUS || (DSIZE-j) <= RADIUS) {
                 if (modified[i*DSIZE+j] != original[i*DSIZE+j]) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i*DSIZE+j], 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], original[i*DSIZE+j]);
                     return -1;
                 }
             }
@@ -146,7 +146,7 @@ int stencil_errorcheck(int *original, int *modified) {
                     if (j-k >= 0) expectedValue += original[i*DSIZE+j-k];
                 }
                 if (modified[i*DSIZE+j] != expectedValue) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, expectedValue, 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], expectedValue);
                     return -1;
                 }
             }
@@ -164,7 +164,7 @@ int matmul_errorcheck(int *A, int *B, int *C) {
                 result += A[i*DSIZE+k] * B[k*DSIZE+j];
             }
             if (C[i*DSIZE + j]!=result) {
-                printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, result, 1);
+                printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, C[i*DSIZE+j], result);
                 return -1;
             }
         }
@@ -281,11 +281,11 @@ int main() {
     printf ("Done. Compute took %f seconds\n", t2sum);
 
     // perform error check for stencils
-    //stencil_errorcheck(h_A, h_A_stencilled);
-    //stencil_errorcheck(h_B, h_B_stencilled);
+    stencil_errorcheck(h_A, h_A_stencilled);
+    stencil_errorcheck(h_B, h_B_stencilled);
 
     // perform error check for matrix multiplication
-    //matmul_errorcheck(h_A_stencilled, h_B_stencilled, h_C);
+    matmul_errorcheck(h_A_stencilled, h_B_stencilled, h_C);
 
     // print results
     std::cout<<"Printing 8x8 top left corner of each matrix:\n";

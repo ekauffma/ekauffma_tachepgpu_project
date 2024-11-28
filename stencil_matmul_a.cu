@@ -12,9 +12,23 @@
 
 using namespace std;
 
-#define DSIZE 4096
+#define DSIZE 1024
 #define RADIUS 3
-#define BLOCK_SIZE 64
+#define BLOCK_SIZE 32
+
+// error checking macro
+#define cudaCheckErrors(msg)                                   \
+   do {                                                        \
+       cudaError_t __err = cudaGetLastError();                 \
+       if (__err != cudaSuccess) {                             \
+           fprintf(stderr, "Fatal error: %s (%s at %s:%d)\n",  \
+                   msg, cudaGetErrorString(__err),             \
+                   __FILE__, __LINE__);                        \
+           fprintf(stderr, "*** FAILED - ABORTING\n");         \
+           exit(1);                                            \
+       }                                                       \
+   } while (0)
+
 
 __global__ void mat_mul (int* A, int* B, int* C){
 
@@ -61,13 +75,13 @@ int stencil_errorcheck(int *original, int *modified) {
         for (int j = 0; j < DSIZE; ++j) {
             if (i < RADIUS || (DSIZE-i) <= RADIUS) {
                 if (modified[i*DSIZE+j] != original[i*DSIZE+j]) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i*DSIZE+j], 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], original[i*DSIZE+j]);
                     return -1;
                 }
             }
             else if (j < RADIUS || (DSIZE-j) <= RADIUS) {
                 if (modified[i*DSIZE+j] != original[i*DSIZE+j]) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i*DSIZE+j], 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], original[i*DSIZE+j]);
                     return -1;
                 }
             }
@@ -80,7 +94,7 @@ int stencil_errorcheck(int *original, int *modified) {
                     if (j-k >= 0) expectedValue += original[i*DSIZE+j-k];
                 }
                 if (modified[i*DSIZE+j] != expectedValue) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, expectedValue, 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], expectedValue);
                     return -1;
                 }
             }
@@ -98,7 +112,7 @@ int matmul_errorcheck(int *A, int *B, int *C) {
                 result += A[i*DSIZE+k] * B[k*DSIZE+j];
             }
             if (C[i*DSIZE + j]!=result) {
-                printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, result, 1);
+                printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, C[i*DSIZE+j], result);
                 return -1;
             }
         }
@@ -164,6 +178,7 @@ int main() {
     cudaMalloc((void **)&d_A_stencilled, size);
     cudaMalloc((void **)&d_B_stencilled, size);
     cudaMalloc((void **)&d_C, size);
+    cudaCheckErrors("");
 
     // copy memory from host to device
     cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
@@ -171,6 +186,7 @@ int main() {
     cudaMemcpy(d_A_stencilled, h_A_stencilled, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_B_stencilled, h_B_stencilled, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_C, h_C, size, cudaMemcpyHostToDevice);
+    cudaCheckErrors("");
 
     // specify block and grid dimensions
     dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE); 
@@ -178,21 +194,27 @@ int main() {
     
     // launch kernels for stencilling
     stencil_2d<<<gridSize, blockSize>>>(d_A, d_A_stencilled);
+    cudaCheckErrors("");
     stencil_2d<<<gridSize, blockSize>>>(d_B, d_B_stencilled);
+    cudaCheckErrors("");
 
     // copy stencil results back to host
     cudaMemcpy(h_A_stencilled, d_A_stencilled, size, cudaMemcpyDeviceToHost);
     cudaMemcpy(h_B_stencilled, d_B_stencilled, size, cudaMemcpyDeviceToHost);
+    cudaCheckErrors("");
 
     // copy memory from host to device (probably redundant)
     cudaMemcpy(d_A_stencilled, h_A_stencilled, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_B_stencilled, h_B_stencilled, size, cudaMemcpyHostToDevice);
+    cudaCheckErrors("");
     
     // launch matrix multiplication kernel
     mat_mul<<<gridSize, blockSize>>>(d_A_stencilled, d_B_stencilled, d_C);
+    cudaCheckErrors("");
 
     // copy multiplication results back to host
     cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+    cudaCheckErrors("");
 
     // GPU timing
     t2 = clock();
@@ -200,11 +222,11 @@ int main() {
     printf ("Done. Compute took %f seconds\n", t2sum);
 
     // perform error check for stencils
-    //stencil_errorcheck(h_A, h_A_stencilled);
-    //stencil_errorcheck(h_B, h_B_stencilled);
+    stencil_errorcheck(h_A, h_A_stencilled);
+    stencil_errorcheck(h_B, h_B_stencilled);
 
     // perform error check for matrix multiplication
-    //matmul_errorcheck(h_A_stencilled, h_B_stencilled, h_C);
+    matmul_errorcheck(h_A_stencilled, h_B_stencilled, h_C);
 
     // print results
     std::cout<<"Printing 8x8 top left corner of each matrix:\n";

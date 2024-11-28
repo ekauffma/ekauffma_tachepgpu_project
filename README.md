@@ -197,6 +197,40 @@ This is done in `stencil_matmul_d.cu`. I've already implemented shared memory in
 
 Again there appears to be some performance increase for the smaller matrix data points but not much for the larger matrices, since the matrix multiplication bottleneck dominates there.
 
+The version `stencil_matmul_e.cu` implements shared memory in both the `stencil_2d` and `mat_mul` kernels as well as managed memory and nondefault streams.
+
+The timing is shown below:
+
+Varying matrix size:
+
+| Matrix Size | mat_mul time | mat_mul percentage    | stencil_2d time | stencil_2d percentage | total compute time |
+|-------------|--------------|-----------------------|-----------------|-----------------------|--------------------|
+| 256         | 6.6463e-04s  | 31.4%                 | 1.4489e-3s      | 68.6%                 | 0.056233s          |
+| 512         | 1.0914e-03s  | 24.1%                 | 3.4324e-3s      | 75.9 %                | 0.055880s          |
+| 1024        | 6.8867e-03s  | 39.5%                 | 0.010569s       | 60.5%                 | 0.073639s          |
+| 2048        | 0.04417s     | 46.4%                 | 0.050926s       | 53.6%                 | 0.096272s          |
+| 4096        | 0.24612s     | 64.5%                 | 0.135693s       | 35.5%                 | 0.358389s          |
+
+Varying block size:
+
+| Block Size  | mat_mul time | mat_mul percentage    | stencil_2d time | stencil_2d percentage | total compute time |
+|-------------|--------------|-----------------------|-----------------|-----------------------|--------------------|
+| 8           | 0.01044s     | 51.0%                 | 0.01042s        | 49.0%                 | 0.056380s          |
+| 16          | 6.7337e-3s   | 44.0%                 | 8.5807e-3s      | 56.0%                 | 0.053103s          |
+| 32          | 0.01044s     | 48.7%                 | 0.01102s        | 51.3%                 | 0.023246s          |
+
+The performance increase in the matrix multiplication kernel is now pretty obvious. This is the best version of the CUDA code and thus will be used to convert to Alpaka. For reference here are the profiling results for the memory operations:
+
+| Time (%) | Total Time (ns) | Count  | Avg (ns) | Med (ns) | Min (ns) | Max (ns) | StdDev (ns) | Operation                            |
+|----------|-----------------|--------|----------|----------|----------|----------|-------------|--------------------------------------|
+| 63.5     | 3,214,334       | 699    | 4,598.5  | 3,550.0  | 2,399    | 72,128   | 4,491.1     | [CUDA memcpy Unified Host-to-Device] |
+| 36.5     | 1,847,984       | 120    | 15,399.9 | 4,079.5  | 1,919    | 87,136   | 24,084.3    | [CUDA memcpy Unified Device-to-Host] |
+
+| Total (MB) | Count | Avg (MB) | Med (MB) | Min (MB) | Max (MB) | StdDev (MB) | Operation                              |
+|------------|-------|----------|----------|----------|----------|-------------|----------------------------------------|
+| 20.972     | 120   | 0.175    | 0.033    | 0.004    |  1.044   | 0.302       | [CUDA memcpy Unified Device-to-Host]   |
+| 20.972     | 699   | 0.030    | 0.016    | 0.004    |  0.918   | 0.059       | [CUDA memcpy Unified Host-to-Device]   |
+
 
 
 ## Making use of Alpaka

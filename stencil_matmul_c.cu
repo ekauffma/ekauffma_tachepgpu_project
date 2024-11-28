@@ -12,9 +12,22 @@
 
 using namespace std;
 
-#define DSIZE 4096
+#define DSIZE 1024
 #define RADIUS 3
 #define BLOCK_SIZE 32
+
+// error checking macro
+#define cudaCheckErrors(msg)                                   \
+   do {                                                        \
+       cudaError_t __err = cudaGetLastError();                 \
+       if (__err != cudaSuccess) {                             \
+           fprintf(stderr, "Fatal error: %s (%s at %s:%d)\n",  \
+                   msg, cudaGetErrorString(__err),             \
+                   __FILE__, __LINE__);                        \
+           fprintf(stderr, "*** FAILED - ABORTING\n");         \
+           exit(1);                                            \
+       }                                                       \
+   } while (0)
 
 __global__ void mat_mul (int* A, int* B, int* C){
 
@@ -61,13 +74,13 @@ int stencil_errorcheck(int *original, int *modified) {
         for (int j = 0; j < DSIZE; ++j) {
             if (i < RADIUS || (DSIZE-i) <= RADIUS) {
                 if (modified[i*DSIZE+j] != original[i*DSIZE+j]) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i*DSIZE+j], 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], original[i*DSIZE+j]);
                     return -1;
                 }
             }
             else if (j < RADIUS || (DSIZE-j) <= RADIUS) {
                 if (modified[i*DSIZE+j] != original[i*DSIZE+j]) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, original[i*DSIZE+j], 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], original[i*DSIZE+j]);
                     return -1;
                 }
             }
@@ -80,7 +93,7 @@ int stencil_errorcheck(int *original, int *modified) {
                     if (j-k >= 0) expectedValue += original[i*DSIZE+j-k];
                 }
                 if (modified[i*DSIZE+j] != expectedValue) {
-                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, expectedValue, 1);
+                    printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, modified[i*DSIZE+j], expectedValue);
                     return -1;
                 }
             }
@@ -98,7 +111,7 @@ int matmul_errorcheck(int *A, int *B, int *C) {
                 result += A[i*DSIZE+k] * B[k*DSIZE+j];
             }
             if (C[i*DSIZE + j]!=result) {
-                printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, result, 1);
+                printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, C[i*DSIZE+j], result);
                 return -1;
             }
         }
@@ -139,6 +152,7 @@ int main() {
     cudaMallocManaged(&A_stencilled, size);
     cudaMallocManaged(&B_stencilled, size);
     cudaMallocManaged(&C, size);
+    cudaCheckErrors("");
 
     // filling initial values of matrices
     srand(time(nullptr));
@@ -164,12 +178,15 @@ int main() {
     // launch kernels for stencilling
     stencil_2d<<<gridSize, blockSize>>>(A, A_stencilled);
     cudaDeviceSynchronize();
+    cudaCheckErrors("");
     stencil_2d<<<gridSize, blockSize>>>(B, B_stencilled);
     cudaDeviceSynchronize();
+    cudaCheckErrors("");
 
     // launch matrix multiplication kernel
     mat_mul<<<gridSize, blockSize>>>(A_stencilled, B_stencilled, C);
     cudaDeviceSynchronize();
+    cudaCheckErrors("");
 
     // GPU timing
     t2 = clock();
