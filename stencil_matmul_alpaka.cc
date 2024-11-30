@@ -1,8 +1,3 @@
-/*
- * g++ -std=c++17 -O2 -g -I$ALPAKA_BASE/include -DALPAKA_ACC_CPU_B_SEQ_T_SEQ_ENABLED 05_kernel.cc -o 05_kernel_cpu
- * nvcc -x cu -std=c++17 -O2 -g --expt-relaxed-constexpr -I$ALPAKA_BASE/include -DALPAKA_ACC_GPU_CUDA_ENABLED 05_kernel.cc -o 05_kernel_cuda
- */
-
 #include <cassert>
 #include <cstdio>
 #include <random>
@@ -12,7 +7,7 @@
 #include "config.h"
 #include "WorkDiv.hpp"
 
-#define DSIZE 64
+#define DSIZE 8
 
 struct MatMul {
     template <typename TAcc, typename T>
@@ -26,9 +21,11 @@ struct MatMul {
 
         for (auto i : alpaka::uniformElements(acc, size_1d)) {
             for (auto j : alpaka::uniformElements(acc, size_1d)) {
+                int result = 0;
                 for (auto k : alpaka::uniformElements(acc, size_1d)) {
-                    C[i*size_1d+j] = A[i*size_1d+k] * B[k*size_1d+j];
+                    result += A[i*size_1d+k] * B[k*size_1d+j];
                 }
+                C[i*size_1d+j] = result;
             }
         }
     }
@@ -40,7 +37,7 @@ void testMatMul(Host host, Platform platform, Device device) {
   // run the test the given device
   auto queue = Queue{device};
 
-  auto div = makeWorkDiv<Acc1D>(32, 32);
+  auto div = makeWorkDiv<Acc1D>(1, 1);
 
   // initialize matrices
   auto h_A = alpaka::allocMappedBuf<int, uint32_t>(host, platform, size);
