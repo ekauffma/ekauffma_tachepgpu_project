@@ -234,3 +234,15 @@ The performance increase in the matrix multiplication kernel is now pretty obvio
 
 
 ## Making use of Alpaka
+
+I installed Alpaka through the git repository using the following instructions:
+
+```
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/install/ ..
+cmake --install .
+cmake -Dalpaka_ACC_GPU_CUDA_ENABLE=ON ...
+```
+
+My first implementation in Alpaka is located at `stencil_matmul_alpaka.cc`. Here I was not able to implement any parallelization utilizing the GPUs, and as such this code only works with 1 block and for matrix sizes under 32x32. I will work on parallelization next.
+I compiled the program using `nvcc -x cu -std=c++20 -O2 -g --expt-relaxed-constexpr -I /afs/hep.wisc.edu/home/ekauffma/install/include -DALPAKA_ACC_GPU_CUDA_ENABLED stencil_matmul_alpaka.cc -o stencil_matmul_alpaka` and then ran using `./stencil_matmul_alpaka`.
