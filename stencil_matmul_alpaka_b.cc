@@ -7,8 +7,8 @@
 #include "config.h"
 #include "WorkDiv.hpp"
 
-#define DSIZE 64
-#define RADIUS 1
+#define DSIZE 1024
+#define RADIUS 3
 
 struct Stencil2d {
   template <typename TAcc, typename T>
@@ -18,8 +18,24 @@ struct Stencil2d {
                                  Vec2D size) const {
 
     for (auto ndindex : alpaka::uniformElementsND(acc, size)) {
-      auto index = (ndindex[0] * size[1] + ndindex[1]);
-      A_stencilled[index] = 2;
+      auto i = ndindex[0];
+      auto j = ndindex[1];
+
+      // Initialize result with the current element
+      int result = A[i * size[1] + j];
+
+      // Apply stencil only if within bounds
+      if (i >= RADIUS && i < size[0] - RADIUS && j >= RADIUS && j < size[1] - RADIUS) {
+        for (int k = 1; k <= RADIUS; ++k) {
+          result += A[(i + k) * size[1] + j]; // Below
+          result += A[(i - k) * size[1] + j]; // Above
+          result += A[i * size[1] + (j + k)]; // Right
+          result += A[i * size[1] + (j - k)]; // Left
+        }
+   :   }
+
+      // Store the result
+      A_stencilled[i * size[1] + j] = result;
     }
   }
 };
@@ -48,6 +64,14 @@ struct MatMul {
 
 void testStencilMatMul(Host host, Platform platform, Device device) {
 
+  // These are used for timing
+  clock_t t0, t1, t2;
+  double t1sum=0.0;
+  double t2sum=0.0;
+
+  // start timing
+  t0 = clock();
+
   // 3-dimensional and linearised buffer size
   constexpr Vec2D ndsize = {DSIZE, DSIZE};
   constexpr uint32_t size = ndsize.prod();
@@ -68,6 +92,11 @@ void testStencilMatMul(Host host, Platform platform, Device device) {
     h_B_stencilled[i] = 0;
     h_C[i] = 0.;
   }
+
+  // Initialization timing
+  t1 = clock();
+  t1sum = ((double)(t1-t0))/CLOCKS_PER_SEC;
+  printf("Init took %f seconds.  Begin compute\n", t1sum);
 
   // run the test the given device
   auto queue = Queue{device};
@@ -102,6 +131,35 @@ void testStencilMatMul(Host host, Platform platform, Device device) {
   // wait for all the operations to complete
   alpaka::wait(queue);
 
+  //check stencil
+  printf("Checking stencil operation:\n");
+  for (int i = 0; i < DSIZE; ++i) {
+    for (int j = 0; j < DSIZE; ++j) {
+       if (i < RADIUS || (DSIZE-i) <= RADIUS) {
+          if (h_A[i*DSIZE+j] != h_A_stencilled[i*DSIZE+j]) {
+            printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, h_A_stencilled[i*DSIZE+j], h_A[i*DSIZE+j]);
+          }
+        }
+        else if (j < RADIUS || (DSIZE-j) <= RADIUS) {
+          if (h_A[i*DSIZE+j] != h_A_stencilled[i*DSIZE+j]) {
+            printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, h_A_stencilled[i*DSIZE+j], h_A[i*DSIZE+j]);
+          }
+        }
+        else {
+          int expectedValue = h_A[i*DSIZE+j];
+          for (int k = 1; k <= RADIUS; k++) {
+            if (i+k <= DSIZE) expectedValue += h_A[(i+k)*DSIZE+j];
+            if (i-k >= 0) expectedValue += h_A[(i-k)*DSIZE+j];
+            if (j+k <= DSIZE) expectedValue += h_A[i*DSIZE+j+k];
+            if (j-k >= 0) expectedValue += h_A[i*DSIZE+j-k];
+          }
+        if (h_A_stencilled[i*DSIZE+j] != expectedValue) {
+          printf("    Mismatch at index [%d,%d], was: %d, should be: %d\n", i,j, h_A_stencilled[i*DSIZE+j], expectedValue);
+        }
+      }
+    }
+  }
+
   std::cout << "Running Stencil2d for Matrix B with vector indices with a grid of "
             << alpaka::getWorkDiv<alpaka::Grid, alpaka::Blocks>(div) << " blocks x "
             << alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(div) << " threads x "
@@ -127,6 +185,11 @@ void testStencilMatMul(Host host, Platform platform, Device device) {
 
   // wait for all the operations to complete
   alpaka::wait(queue);
+
+  // GPU timing
+  t2 = clock();
+  t2sum = ((double)(t2-t1))/CLOCKS_PER_SEC;
+  printf ("Done. Compute took %f seconds\n", t2sum);
 
   // perform error check for matrix multiplication
   printf("Checking matrix multiplication operation:\n");

@@ -244,5 +244,29 @@ cmake --install .
 cmake -Dalpaka_ACC_GPU_CUDA_ENABLE=ON ...
 ```
 
-My first implementation in Alpaka is located at `stencil_matmul_alpaka.cc`. Here I was not able to implement any parallelization utilizing the GPUs, and as such this code only works with 1 block and for matrix sizes under 32x32. I will work on parallelization next.
-I compiled the program using `nvcc -x cu -std=c++20 -O2 -g --expt-relaxed-constexpr -I /afs/hep.wisc.edu/home/ekauffma/install/include -DALPAKA_ACC_GPU_CUDA_ENABLED stencil_matmul_alpaka.cc -o stencil_matmul_alpaka` and then ran using `./stencil_matmul_alpaka`.
+I copied the `config.h` and `WorkDiv.hpp` files from the tutorial shown in lecture: [https://github.com/fwyzard/intro_to_alpaka/tree/master/alpaka](https://github.com/fwyzard/intro_to_alpaka/tree/master/alpaka).
+
+My first implementation in Alpaka is located at `stencil_matmul_alpaka_a.cc`. Here I was not able to implement any parallelization utilizing the GPUs, and as such this code only works with 1 block and for matrix sizes under 32x32. I will work on parallelization next.
+I compiled the program using `nvcc -x cu -std=c++20 -O2 -g --expt-relaxed-constexpr -I /afs/hep.wisc.edu/home/ekauffma/install/include -DALPAKA_ACC_GPU_CUDA_ENABLED stencil_matmul_alpaka_a.cc -o stencil_matmul_alpaka` and then ran using `./stencil_matmul_alpaka_a`.
+
+My second implementation in Alpaka is located at `stencil_matmul_alpaka_b.cc`. I needed to use the 2D methods in order to get the kernels to work properly. These implementations don't use shared memory or any of the CUDA optimizations, but the program still runs pretty quickly. Here are the compute timing results, with the same settings used in previous timings:
+
+| Matrix Size | total compute time |
+|-------------|--------------------|
+| 256         | 0.022629s          |
+| 512         | 0.033952s          |
+| 1024        | 0.127945s          |
+| 2048        | 0.647309s          |
+| 4096        | 4.275024s          |
+
+| Block Size  | total compute time |
+|-------------|--------------------|
+| 8           | 0.422716s          |
+| 16          | 0.199956s          |
+| 32          | 0.107521s          |
+
+Interestingly, block size seems to have a much larger effect here.
+
+
+
+
